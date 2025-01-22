@@ -2,6 +2,7 @@ const sqlite3 = require('sqlite3')
 const open = require('sqlite').open
 const fs = require('fs')
 const process = require('process')
+const { create } = require('domain')
 
 const filename = 'contacts.sqlite3'
 const numContacts = parseInt(process.argv[2], 10);
@@ -20,9 +21,14 @@ const migrate = async (db) => {
   console.log('Done migrating db')
 }
 
+const createIndex = async (db) => {
+  console.log('Creating index ...')
+  await db.exec('CREATE INDEX email_index ON contacts (email)')
+  console.log('Done creating index')
+}
+
 const insertManyContacts = async (db, numContacts) => {
   console.log(`Inserting ${numContacts} contacts ...`)
-
 
   await db.run('BEGIN TRANSACTION')
   const stmt = await db.prepare('INSERT INTO contacts (name, email) VALUES (?, ?)')
@@ -57,8 +63,10 @@ const queryContact = async (db) => {
     filename,
     driver: sqlite3.Database
   })
+
   if (shouldMigrate) {
     await migrate(db)
+    await createIndex(db)
   }
   await insertManyContacts(db, numContacts)
 
