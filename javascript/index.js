@@ -22,16 +22,26 @@ const migrate = async (db) => {
 
 const insertManyContacts = async (db, numContacts) => {
   console.log(`Inserting ${numContacts} contacts ...`)
-  // TODO
-  // At the end of this call, the db should contain exactly `numContacts` contacts,
-  // from email-1@domain.tld to email-{numContacts}@domain.tld
 
+
+  await db.run('BEGIN TRANSACTION')
   const stmt = await db.prepare('INSERT INTO contacts (name, email) VALUES (?, ?)')
-  for (let i = 1; i <= numContacts; i++) {
-    await stmt.run(`name-${i}`, `email-${i}@domain.tld`)
-  }
-  await stmt.finalize()
 
+  try {
+    for (let i = 1; i <= numContacts; i++) {
+      await stmt.run(`name-${i}`, `email-${i}@domain.tld`)
+      // Commit every 1000 records to avoid memory issues
+      if (i % 1000 === 0) {
+        await db.run('COMMIT')
+        await db.run('BEGIN TRANSACTION')
+      }
+    }
+    await stmt.finalize()
+    await db.run('COMMIT')
+  } catch (err) {
+    await db.run('ROLLBACK')
+    throw err
+  }
 
 
   console.log('Done inserting contacts')
@@ -57,7 +67,7 @@ const queryContact = async (db) => {
   const end = Date.now()
   const elapsed = end - start
   console.log(`Query took ${elapsed} milliseconds`)
-  
+
   if (!contact || !contact.name) {
     console.error('Contact not found')
     process.exit(1)
