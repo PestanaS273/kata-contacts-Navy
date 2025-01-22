@@ -25,6 +25,15 @@ const insertManyContacts = async (db, numContacts) => {
   // TODO
   // At the end of this call, the db should contain exactly `numContacts` contacts,
   // from email-1@domain.tld to email-{numContacts}@domain.tld
+
+  const stmt = await db.prepare('INSERT INTO contacts (name, email) VALUES (?, ?)')
+  for (let i = 1; i <= numContacts; i++) {
+    await stmt.run(`name-${i}`, `email-${i}@domain.tld`)
+  }
+  await stmt.finalize()
+
+
+
   console.log('Done inserting contacts')
 }
 
